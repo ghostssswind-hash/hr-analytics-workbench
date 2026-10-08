@@ -1,0 +1,9 @@
+{
+  "name": "hr-analytics-workbench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "2026 人力行政部 · 数据分析工作台（静态页 + Edge 中间件权限层 + 云函数）",
+  "dependencies": {
+    "@edgeone/pages-blob": "^0.0.14"
+  }
+}
