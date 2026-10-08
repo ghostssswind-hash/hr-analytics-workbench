@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 人力行政部 · 数据分析工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f7fa; --card:#ffffff; --border:#e8ecf1;
+    --text:#1f2d3d; --sub:#7a8ba3; --primary:#2f6bff;
+    --red:#f0443c; --green:#22b07d; --orange:#ff9f43; --purple:#8b5cf6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:"PingFang SC","Microsoft YaHei",sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:14px 28px 0;position:sticky;top:0;z-index:10;}
+  .topbar .row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .topbar h1{font-size:20px;font-weight:600;}
+  .topbar .meta{font-size:12px;color:var(--sub);}
+  .tabs{display:flex;gap:4px;}
+  .tab{padding:10px 18px;font-size:14px;cursor:pointer;border-radius:8px 8px 0 0;color:var(--sub);border-bottom:2px solid transparent;}
+  .tab:hover{color:var(--primary);}
+  .tab.active{color:var(--primary);font-weight:600;border-bottom:2px solid var(--primary);background:#f0f5ff;}
+  .tab .badge{display:inline-block;min-width:16px;padding:0 5px;font-size:11px;line-height:16px;border-radius:8px;background:var(--red);color:#fff;margin-left:4px;text-align:center;}
+  .content{padding:20px 28px 40px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  .srcbar{background:#eef3ff;border:1px solid #d6e2ff;color:#2b5bb8;padding:8px 14px;border-radius:10px;font-size:12px;margin-bottom:16px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .srcbar .warnpart{color:#a86800;}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
+  .kpis.k4{grid-template-columns:repeat(4,1fr);}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+  .kpi .label{font-size:12px;color:var(--sub);margin-bottom:6px;}
+  .kpi .value{font-size:24px;font-weight:700;}
+  .kpi .delta{font-size:11px;margin-top:5px;color:var(--sub);line-height:1.45;}
+  .up{color:var(--red);} .down{color:var(--green);} .warn{color:var(--orange);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .card h3{font-size:15px;font-weight:600;margin-bottom:2px;}
+  .card .sub{font-size:12px;color:var(--sub);margin-bottom:10px;}
+  .chart{width:100%;height:270px;}
+  .wide{grid-column:1 / -1;}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:#eef3ff;color:var(--primary);margin-left:8px;vertical-align:2px;}
+  .tag.red{background:#fef2f1;color:var(--red);}
+  .alerts{display:flex;flex-direction:column;gap:8px;}
+  .alert{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55;}
+  .alert .ico{flex-shrink:0;font-size:15px;}
+  .alert.lvl-high{background:#fef2f1;border:1px solid #fadbd8;color:#9c2b23;}
+  .alert.lvl-mid{background:#fff7e6;border:1px solid #ffe1b3;color:#a86800;}
+  .alert.lvl-low{background:#f0f5ff;border:1px solid #d6e2ff;color:#2b5bb8;}
+  .alert b{font-weight:600;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:#f7f9fc;color:var(--sub);font-weight:500;text-align:left;padding:9px 12px;font-size:12px;white-space:nowrap;}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  tr:hover td{background:#fafbfe;}
+  .pill{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;}
+  .pill.high{background:#fef2f1;color:var(--red);}
+  .pill.mid{background:#fff7e6;color:#a86800;}
+  .pill.low{background:#f0f5ff;color:var(--primary);}
+  .pill.ok{background:#eafaf3;color:var(--green);}
+  .insight{background:#f0f5ff;border-left:3px solid var(--primary);padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;color:#2b3a55;line-height:1.75;margin-bottom:14px;}
+  .insight b{color:var(--primary);}
+  .matrix{width:100%;border-collapse:collapse;font-size:13px;text-align:center;}
+  .matrix th{background:#f7f9fc;text-align:center;}
+  .matrix td{border:1px solid var(--border);text-align:center;}
+  .matrix .rowh{background:#f7f9fc;font-weight:600;}
+  .matrix td.hl{color:var(--primary);font-weight:600;}
+  .note{font-size:12px;color:var(--sub);line-height:1.7;margin-top:8px;}
+  .deadline{background:linear-gradient(90deg,#fff4e8,#ffece7);border:1px solid #ffc9a8;border-left:4px solid var(--red);border-radius:10px;padding:12px 16px;font-size:13.5px;color:#8a3324;line-height:1.8;margin-bottom:14px;}
+  .deadline b{color:#d92b1f;}
+  .deadline .dlt{display:inline-block;background:var(--red);color:#fff;border-radius:6px;padding:1px 9px;font-weight:700;margin:0 3px;letter-spacing:.5px;}
+  .pill.due{background:#fff1e6;color:#d9660b;border:1px solid #ffd0a8;}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr);}.grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="row1">
+    <div>
+      <h1>2026 人力行政部 · 数据分析工作台</h1>
+      <div class="meta">数据源：企业微信智能表格「2026人力行政部」 · 人员数据截至 2026-10-08</div>
+    </div>
+    <div class="meta">🔒 含真实员工数据，请勿外传<span id="roleBadge" style="margin-left:8px"></span><a href="/__hrlogout" onclick="return confirm('确认退出登录？退出后需要重新输入密码。')" style="margin-left:12px;display:inline-block;padding:2px 12px;border-radius:6px;border:1px solid #cfd9e6;background:#fff;color:#55657a;font-size:12.5px;font-weight:600;text-decoration:none;cursor:pointer;vertical-align:middle;">退出登录</a></div>
+  </div>
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-page="overview">人员总览</div>
+    <div class="tab" data-page="recruit">招聘分析</div>
+    <div class="tab" data-page="perf">绩效考核</div>
+    <div class="tab" data-page="quality">数据质量<span class="badge">8</span></div>
+    <div class="tab" data-page="perm">权限设置</div>
+  </div>
+</div>
+
+<div class="content">
+<div class="deadline">⏰ <b>数据补录待办（醒目提醒）</b>：本页数据质量问题已于 <b>9 月 28 日（周一）通知相关同事</b>，要求在 <span class="dlt">10 月 10 日</span> 前完成更新。涉及字段：<b>离职类型、离职原因、劳动合同到期日期、劳动合同类型、人员类别、招聘计划「实际入职人数」</b> 等。<br>补齐后本工作台的人员结构、离职分析、合同预警、招聘达成率等全部指标将自动变准；逾期未补齐的字段，相关分析页会持续显示"口径不完整"提示。</div>
+<div class="srcbar">
+  <span>✅ 本页为<b>真实数据版</b>（数据截至 2026-10-08）：花名册总表 457 条、面试登记 792 条、招聘计划月度表、房山外展部招聘需求进度表</span>
+</div>
+
+<!-- ============ 人员总览 ============ -->
+<div class="page active" id="page-overview">
+  <div class="kpis">
+    <div class="kpi"><div class="label">在职总人数</div><div class="value">113</div><div class="delta">房山 69 · 保定 24 · 朝阳 20</div></div>
+    <div class="kpi"><div class="label">10月入职（截至 10-08）</div><div class="value">0</div><div class="delta">花名册暂无 10 月入职记录（未录入或确无）；9 月入职 9 人：房山4 · 保定4 · 朝阳1</div></div>
+    <div class="kpi"><div class="label">10月离职（截至 10-08）</div><div class="value">0</div><div class="delta down">花名册暂无 10 月离职记录；9 月离职 11 人（8 月 15 人为全年峰值）</div></div>
+    <div class="kpi"><div class="label">在职试用期人数</div><div class="value">21</div><div class="delta warn">房山9 · 保定7 · 朝阳5，占在职 18.6%</div></div>
+    <div class="kpi"><div class="label">合同已过期未续签</div><div class="value" style="color:var(--red)">8</div><div class="delta up">最早 2026-04-02 到期（张萌1）</div></div>
+    <div class="kpi"><div class="label">数据异常项</div><div class="value" style="color:var(--red)">8</div><div class="delta">补录期限 10/10 · 详见「数据质量」页</div></div>
+  </div>
+
+  <div class="insight">📊 <b>本期解读（数据均来自花名册总表实时统计）：</b>在职 113 人，房山占 61%，是绝对主力；业务板块上<b>外展 54 人</b>为第一大板块，<b>搭建 34 人</b>、职能配合 14 人、内展 11 人。2026 年 1-9 月累计入职 109 人、离职 99 人（<b>净增 10 人</b>），进出基本持平（10 月截至 10-08 花名册暂无入离职记录）——说明公司处于"高流动、规模稳定"状态，<b>招聘量与离职量已在同一量级，控流失比加招聘更划算</b>。<br>🔴 <b>合同字段本周已大幅补齐：「劳动合同到期日期」缺失由 59 人降至 31 人</b>；仍有 <b>8 名在职员工合同已过期仍在岗</b>（最早 2026-04-02 到期），另有 10 月 2 份、11 月 2 份、12 月 2 份即将到期，建议本周内集中处理续签；<b>31 名在职员工到期日期仍为空</b>（占 27%）。<br>🟠 在职女性 98 人、男性 15 人（87% 女性）；试用期内 21 人，其中到岗满 1 个月的 <b>14 人</b>「转正日期」尚未登记（较上期 11 人增加 3 人，均为 8 月末入职者陆续满月）——各部门试用期约定长短不一，此名单仅按「入职满 1 个月」口径提示 HR 关注，不作为转正逾期判定，需逐一核实是流程在走还是数据未更新。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>三地 × 业务板块 在编矩阵<span class="tag">实时</span></h3>
+      <div class="sub">行=办公地，列=业务板块（外展 / 内展 / 搭建 / 职能配合）</div>
+      <table class="matrix">
+        <tr><th>办公地</th><th>外展</th><th>内展</th><th>搭建</th><th>职能配合</th><th>合计</th><th>占比</th></tr>
+        <tr><td class="rowh">房山</td><td class="hl">41</td><td>0</td><td>17</td><td>11</td><td><b>69</b></td><td>61%</td></tr>
+        <tr><td class="rowh">保定</td><td>11</td><td class="hl">11</td><td>0</td><td>2</td><td><b>24</b></td><td>21%</td></tr>
+        <tr><td class="rowh">朝阳</td><td>2</td><td>0</td><td class="hl">17</td><td>1</td><td><b>20</b></td><td>18%</td></tr>
+        <tr><td class="rowh">合计</td><td><b>54</b></td><td><b>11</b></td><td><b>34</b></td><td><b>14</b></td><td><b>113</b></td><td>100%</td></tr>
+      </table>
+      <div class="note">💡 结构特征：房山以外展为绝对核心；保定是内展主场（内展 11 人全部在保定）；朝阳搭建 17 人与房山持平，是隐藏的搭建主力；职能人员 79% 集中在房山。</div>
+    </div>
+    <div class="card">
+      <h3>三地人员规模与板块构成</h3>
+      <div class="sub">在编人数堆叠柱状图</div>
+      <div id="cRegionPanel" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>2026 年入离职趋势<span class="tag">1-9月实时</span></h3>
+      <div class="sub">柱=当月入职/离职人数，线=净增（2 月无入职记录）</div>
+      <div id="cTurnover" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>在职人员结构</h3>
+      <div class="sub">左：性别构成；右：试用期 / 已转正构成</div>
+      <div id="cStructure" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🚨 预警面板<span class="tag red">自动扫描花名册总表</span></h3>
+    <div class="sub">按紧急程度排序</div>
+    <div class="alerts">
+      <div class="alert lvl-high"><span class="ico">🔴</span><div><b>8 名在职员工劳动合同已过期仍在岗</b>，存在用工合规风险，必须立即续签：张萌1（朝阳·职能配合·人事行政部，2026-04-02 到期）、李媛博（朝阳·搭建·项目部，2026-09-12）、吴云博、纪帅（均朝阳·搭建·朝阳搭建销售部，2026-09-30）、谷雷、张瑞彪、李宁（均朝阳·搭建·设计部，2026-09-30）、杜欣凌（朝阳·外展·外联部，2026-09-30）。</div></div>
+      <div class="alert lvl-high"><span class="ico">🔴</span><div><b>31 名在职员工「劳动合同到期日期」为空</b>（占在职 27%），已较本周初的 59 人补齐过半，剩余建议本月内补完。</div></div>
+      <div class="alert lvl-mid"><span class="ico">🟡</span><div><b>到岗满 1 个月关注名单（14 人 · 转正日期待登记）</b>：<b>7 月入职 4 人</b>——翟璐璐（房山·职能配合，07-13）、赵悦（保定·外展，07-13）、关若祺（朝阳·搭建，07-20）、刘欣然（房山·外展，07-22）；<b>8 月入职 10 人</b>——马安然（房山·搭建，08-05）、丁楠、运博亚（朝阳·搭建，08-10）、陶佳会（房山·外展，08-17）、张佳奕、刘晨、赵梦然（保定·外展，08-17）、伍津慧（房山·外展，08-31）、王宇旋（朝阳·搭建，08-31）、李云凡（保定·内展，08-31）。各部门试用期不同，本名单按「入职满 1 个月且转正日期为空」统一提示，供 HR 跟进转正进度，不作逾期判定。</div></div>
+      <div class="alert lvl-mid"><span class="ico">🟠</span><div><b>9 月新入职 2 人当月即离职</b>（占当月入职 22%），意味着招募与岗位匹配环节仍有偏差，建议复盘这两人的面试评价与岗位安排。</div></div>
+      <div class="alert lvl-high"><span class="ico">🔴</span><div><b>2026 年离职 99 人，试用期阶段离职 79 人（80%）</b>：入职 3 天内 8 人、3-7 天 3 人、试用期内（超 7 天）68 人；转正后离职 20 人（工龄不满 1 年 13 人、满 1 年以上 7 人）。其中 11 人入职一周内即离职，说明问题主要出在"招进来"而非"留不住"，建议把「入职 90 天内离职率」列为季度考核指标。</div></div>
+      <div class="alert lvl-mid"><span class="ico">🟠</span><div><b>2026 年 8 月离职 15 人为全年峰值</b>，其中试用期内离职占比高，建议聚焦"入职 90 天内"的留存管理。</div></div>
+      <div class="alert lvl-low"><span class="ico">🔵</span><div><b>朝阳搭建 17 人与房山搭建 17 人持平</b>，但朝阳总面积小、职能仅 1 人，管理半径偏大，可关注属地管理支撑是否足够。</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 招聘分析 ============ -->
+<div class="page" id="page-recruit">
+  <div class="kpis">
+    <div class="kpi"><div class="label">9月计划入职</div><div class="value">11</div><div class="delta">外展销售4 · 外展展位销售5 · 搭建销售1 · 内展展位销售1</div></div>
+    <div class="kpi"><div class="label">9月实际入职</div><div class="value">9</div><div class="delta">房山4 · 保定4 · 朝阳1（花名册口径）</div></div>
+    <div class="kpi"><div class="label">9月招聘达成率</div><div class="value">82%</div><div class="delta warn">表格内该列未填写（显示 0 / 计算错误）</div></div>
+    <div class="kpi"><div class="label">9月计划面试人次</div><div class="value">77</div><div class="delta">年度面试记录累计 792 条</div></div>
+    <div class="kpi"><div class="label">面试"可入职"率</div><div class="value">21%</div><div class="delta">166 人可入职 / 792 条面试记录</div></div>
+    <div class="kpi"><div class="label">房山外展缺口</div><div class="value">0</div><div class="delta down">需求 12 人 · 已入职 13 人</div></div>
+  </div>
+
+  <div class="insight">📊 <b>本期解读：</b>9 月计划入职 11 人、实际到岗 9 人（达成率 82%），缺口主要在保定与朝阳片区。面试端看，年度 792 条面试记录已 <b>100% 录入结果</b>：「不考虑」506 人次占 <b>64%</b>，「可入职」166 人次占 21%，「拒绝 offer」71 人次占 9%，待定 49 人次占 6%——<b>六成以上面试终结于「不考虑」</b>，说明简历/邀约筛选环节精度不足，把大量不合格人选放进了面试环节，浪费面试官时间；同时 71 人次拿到 offer 后拒绝，需关注薪酬竞争力与沟通节奏。<br>🔴 <b>数据层面问题突出：</b>招聘计划月度表 9 月的「实际入职人数」列<b>8 行全部为空</b>，导致「达成率」公式显示 0 或"计算错误"，HR 无法在表内闭环查看招聘成果；表中还有 3 行完全空白行。建议每月末把实际入职数回填，达成率即可自动计算。<br>✅ 房山外展部 8 个队组的招聘需求已全部满足（需求 12 人、已入职 13 人），其中 5 人仍在试用期、17 人已转正。<br>🆕 <b>队组留存分析（本页下方新增）：</b>2026 年入职 109 人目前在职 42 人（留存 39%）；<b>内展新锐队 6 进 6 出、留存 0%</b>，外展新锐队（35%）、朝阳搭建销售部（38%）也低于警戒线；外联部 4 人全部留存（100%），其招聘带教做法值得复制。<br>🧮 <b>三表核对口径（本页下方新增）：</b>招聘指标一律用<b>花名册 + 面试登记表 + 招聘数据表</b>三表互校——入职 / 离职人数以花名册为唯一基准，面试登记表用于核对面试到岗转化，招聘数据表用于核对队组招聘目标台账。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>9 月招聘计划 vs 实际到岗</h3>
+      <div class="sub">计划按模块口径，实际按办公地口径</div>
+      <div id="cPlanActual" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>年度面试结果分布<span class="tag">792 条 · 已 100% 填写</span></h3>
+      <div class="sub">面试沟通结果单选项统计</div>
+      <div id="cInterviewResult" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>三地面试量分布</h3>
+      <div class="sub">年度面试登记人次</div>
+      <div id="cInterviewRegion" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>房山外展部招聘需求进度<span class="tag">按队组</span></h3>
+      <div class="sub">需求人数 / 实际入职 / 未转正 / 已转正</div>
+      <div id="cTeamProgress" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>9 月招聘计划明细<span class="tag red">表格原样呈现</span></h3>
+    <div class="sub">数据来自「招聘计划月度表」，可见「实际入职人数」与「达成率」两列问题</div>
+    <table>
+      <tr><th>月份</th><th>业务模块</th><th>岗位</th><th>计划面试人次</th><th>计划入职人数</th><th>预估转正人数</th><th>实际入职人数</th><th>达成率</th></tr>
+      <tr><td>9月</td><td>外展</td><td>销售</td><td>30</td><td>4</td><td>—</td><td><span class="pill high">未填写</span></td><td><span class="pill high">0</span></td></tr>
+      <tr><td>9月</td><td>外展</td><td>展位销售</td><td>15</td><td>5</td><td>1</td><td><span class="pill high">未填写</span></td><td><span class="pill high">0</span></td></tr>
+      <tr><td>9月</td><td>搭建</td><td>销售</td><td>5</td><td>1</td><td>—</td><td><span class="pill high">未填写</span></td><td><span class="pill high">0</span></td></tr>
+      <tr><td>9月</td><td>搭建</td><td>—（未填）</td><td>20</td><td>0</td><td>1</td><td><span class="pill high">未填写</span></td><td><span class="pill high">计算错误</span></td></tr>
+      <tr><td>9月</td><td>内展</td><td>展位销售</td><td>7</td><td>1</td><td>0</td><td><span class="pill high">未填写</span></td><td><span class="pill high">0</span></td></tr>
+      <tr><td colspan="8" style="color:var(--sub)">另有 3 行整行空白记录（月份、模块、岗位均为空），同样触发「计算错误」</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>房山外展部招聘需求进度明细</h3>
+    <div class="sub">8 个队组，需求合计 12 人，实际入职 13 人</div>
+    <table>
+      <tr><th>项目组</th><th>组长</th><th>需求人数</th><th>实际入职</th><th>未转正</th><th>已转正</th><th>入职人员</th></tr>
+      <tr><td>金泽队</td><td>陈爽</td><td>1</td><td>1</td><td>1</td><td>2</td><td>唐珊珊、郭爽</td></tr>
+      <tr><td>黑马队</td><td>李云红</td><td>2</td><td>4</td><td>2</td><td>2</td><td>苏苗苗、杨亚荣、柴钰麒、陶佳会</td></tr>
+      <tr><td>王者队</td><td>管博/李帷</td><td>2</td><td>1</td><td>0</td><td>3</td><td>封江虹</td></tr>
+      <tr><td>狂飙队</td><td>王琳</td><td>2</td><td>1</td><td>1</td><td>0</td><td>周娅娜</td></tr>
+      <tr><td>精英队</td><td>肖瑶</td><td>1</td><td>1</td><td>0</td><td>3</td><td>李红蕾</td></tr>
+      <tr><td>雷霆队</td><td>王亚南</td><td>1</td><td>1</td><td>1</td><td>2</td><td>崔硕</td></tr>
+      <tr><td>北斗队</td><td>陈杨</td><td>2</td><td>2</td><td>0</td><td>2</td><td>尚悦、冯颖</td></tr>
+      <tr><td>荣耀队</td><td>管博/单莹</td><td>1</td><td>2</td><td>0</td><td>3</td><td>陈嘉漪、孟欢</td></tr>
+    </table>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>各队组 2026 年入职留存对比<span class="tag">全口径</span></h3>
+      <div class="sub">柱=2026年入职 / 目前在职，线=留存率（展示入职≥4 人的队组）</div>
+      <div id="cTeamRetention" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>留存梯队速读</h3>
+      <div class="sub">留存率 = 2026 年入职且至今在职 ÷ 2026 年入职</div>
+      <table>
+        <tr><th>梯队</th><th>队组</th><th>解读</th></tr>
+        <tr><td><span class="pill high">预警</span></td><td>内展新锐队 0% · 狂飙队 0% · 朝阳外展销售部 0% · 历史队伍 0%</td><td>2026 年入职者已全部流失；内展新锐队 6 进 6 出，其中 3 人入职 3 天内即走</td></tr>
+        <tr><td><span class="pill mid">偏低</span></td><td>黑马队 25% · 客服部 25% · 精英队 25% · 飞龙队 33% · 光速队 33% · 雷霆队 33% · 外展新锐队 35% · 朝阳搭建销售部 38%</td><td>流失主力是试用期内离职，建议核查带教落实与岗位预期沟通</td></tr>
+        <tr><td><span class="pill ok">健康</span></td><td>高峰队 50% · 金泽队 50% · 市场部 50% · 荣耀队 50% · 天一队 60% · 北斗队 67% · 设计部 67% · 外联部 100% · 沐焱队 100% · 王者队 100% · 项目部 100%</td><td>可总结复制其招聘与带教做法</td></tr>
+      </table>
+      <div class="note">📌 口径：按花名册「部门」字段统计 2026 年入职的 109 人，留存率只看 2026 年入职批次；历史在职员工不在此列。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>各队组 2026 年入职留存明细<span class="tag">23 个部门</span></h3>
+    <div class="sub">按 2026 年入职人数排序 · 留存率低于 40% 标红</div>
+    <table>
+      <tr><th>队组 / 部门</th><th>板块</th><th>2026 入职</th><th>3天内</th><th>7天内</th><th>试用期内</th><th>转正后</th><th>离职合计</th><th>目前在职</th><th>留存率</th></tr>
+      <tr><td>外展新锐队</td><td>外展</td><td>20</td><td>2</td><td>0</td><td>10</td><td>1</td><td>13</td><td>7</td><td><span class="pill high">35%</span></td></tr>
+      <tr><td>朝阳搭建销售部</td><td>搭建</td><td>16</td><td>2</td><td>2</td><td>5</td><td>1</td><td>10</td><td>6</td><td><span class="pill high">38%</span></td></tr>
+      <tr><td>黑马队</td><td>外展</td><td>8</td><td>0</td><td>0</td><td>5</td><td>1</td><td>6</td><td>2</td><td><span class="pill high">25%</span></td></tr>
+      <tr><td>飞龙队</td><td>内展</td><td>6</td><td>0</td><td>0</td><td>3</td><td>1</td><td>4</td><td>2</td><td><span class="pill high">33%</span></td></tr>
+      <tr><td>高峰队</td><td>搭建</td><td>6</td><td>0</td><td>0</td><td>3</td><td>0</td><td>3</td><td>3</td><td><span class="pill ok">50%</span></td></tr>
+      <tr><td>内展新锐队</td><td>内展</td><td>6</td><td>3</td><td>0</td><td>3</td><td>0</td><td>6</td><td>0</td><td><span class="pill high">0%</span></td></tr>
+      <tr><td>天一队</td><td>内展</td><td>5</td><td>0</td><td>0</td><td>1</td><td>1</td><td>2</td><td>3</td><td><span class="pill ok">60%</span></td></tr>
+      <tr><td>外联部</td><td>外展</td><td>4</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>4</td><td><span class="pill ok">100%</span></td></tr>
+      <tr><td>客服部</td><td>外展/职能</td><td>4</td><td>0</td><td>0</td><td>3</td><td>0</td><td>3</td><td>1</td><td><span class="pill high">25%</span></td></tr>
+      <tr><td>金泽队</td><td>外展</td><td>4</td><td>0</td><td>0</td><td>2</td><td>0</td><td>2</td><td>2</td><td><span class="pill ok">50%</span></td></tr>
+      <tr><td>精英队</td><td>外展</td><td>4</td><td>0</td><td>0</td><td>3</td><td>0</td><td>3</td><td>1</td><td><span class="pill high">25%</span></td></tr>
+      <tr><td>北斗队</td><td>外展</td><td>3</td><td>0</td><td>0</td><td>1</td><td>0</td><td>1</td><td>2</td><td><span class="pill ok">67%</span></td></tr>
+      <tr><td>设计部</td><td>搭建</td><td>3</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>2</td><td><span class="pill ok">67%</span></td></tr>
+      <tr><td>雷霆队</td><td>外展</td><td>3</td><td>0</td><td>0</td><td>2</td><td>0</td><td>2</td><td>1</td><td><span class="pill high">33%</span></td></tr>
+      <tr><td>光速队</td><td>外展</td><td>3</td><td>1</td><td>0</td><td>1</td><td>0</td><td>2</td><td>1</td><td><span class="pill high">33%</span></td></tr>
+      <tr><td>狂飙队</td><td>外展</td><td>3</td><td>0</td><td>0</td><td>2</td><td>1</td><td>3</td><td>0</td><td><span class="pill high">0%</span></td></tr>
+      <tr><td>市场部</td><td>外展/职能</td><td>2</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td><span class="pill ok">50%</span></td></tr>
+      <tr><td>荣耀队</td><td>外展</td><td>2</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td><span class="pill ok">50%</span></td></tr>
+      <tr><td>朝阳外展销售部</td><td>外展</td><td>2</td><td>0</td><td>1</td><td>1</td><td>0</td><td>2</td><td>0</td><td><span class="pill high">0%</span></td></tr>
+      <tr><td>历史队伍</td><td>内展</td><td>2</td><td>0</td><td>0</td><td>2</td><td>0</td><td>2</td><td>0</td><td><span class="pill high">0%</span></td></tr>
+      <tr><td>沐焱队</td><td>搭建</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td><span class="pill ok">100%</span></td></tr>
+      <tr><td>项目部</td><td>搭建</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td><span class="pill ok">100%</span></td></tr>
+      <tr><td>王者队</td><td>外展</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td><span class="pill ok">100%</span></td></tr>
+      <tr><td colspan="2"><b>合计</b></td><td><b>109</b></td><td>8</td><td>3</td><td>47</td><td>9</td><td><b>67</b></td><td><b>42</b></td><td><b>39%</b></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>招聘数据三表核对口径<span class="tag">花名册 + 面试登记表 + 招聘数据表</span></h3>
+    <div class="sub">招聘相关指标必须三表互校，只看单表一定会漏人</div>
+    <table>
+      <tr><th>数据源</th><th>记录量</th><th>能核对的</th><th>不能核对的（局限）</th></tr>
+      <tr><td><b>花名册总表</b><br><span style="color:var(--sub)">基准口径</span></td><td>457 条</td><td>入职日期、转正日期、离职日期、离职阶段、部门、三地</td><td>无面试过程、无发薪与成本信息</td></tr>
+      <tr><td><b>面试登记表</b></td><td>792 条</td><td>面试→"不考虑 / 可入职 / 拒绝 offer"漏斗，邀约与筛选质量</td><td>只到面试环节，不含实际到岗与在职状态</td></tr>
+      <tr><td><b>招聘数据表</b>（在线，李奥维护）</td><td>31 张子表</td><td>队组招聘目标台账、各队"劝退"标签</td><td>数值列目前全部为空；组织命名与花名册不一致</td></tr>
+    </table>
+    <div class="note">📌 <b>三表怎么互校：</b>① <b>入职 / 离职人数 → 以花名册为唯一基准</b>；② <b>面试到岗转化</b> → 用<b>面试登记表</b>与花名册入职人数对碰；③ <b>队组招聘目标</b> → 用<b>招聘数据表</b>，但其数值列需先补齐。<br>⚠️ 之前「入职 3 天内离职」曾显示 6 人、实际 8 人，是因为口径不统一——现已全部改为花名册单一基准。</div>
+  </div>
+
+  <div class="card">
+    <h3>⚠️ 两个招聘表的口径差异（为什么和「2026招聘数据」对不上）</h3>
+    <div class="sub">本页数据取自花名册总表并已与面试登记表互校；「2026招聘数据」是在线表格（李奥维护，31 张子表），两者不是一个口径</div>
+    <table>
+      <tr><th>对比项</th><th>本页（花名册总表）</th><th>2026招聘数据（在线表格）</th></tr>
+      <tr><td>组织维度</td><td>单一「部门」字段（23 个队组/部门）</td><td>「项目 + 小组」两级（西部天然 / 河北体育 / 北京体育 / 河北制药原料…）</td></tr>
+      <tr><td>部门命名</td><td>沐焱队、朝阳搭建销售部、外展新锐队、内展新锐队、历史队伍…</td><td>沐炎队（同一队但用字不同）、朝阳-搭建销售、新人营、超越队、摘星队（小组取消）、世展网…</td></tr>
+      <tr><td>离职口径</td><td>按「离职阶段（公式）」分 3天内 / 7天内 / 试用期内 / 转正后</td><td>分「未满3天离职+劝退」「未满7天离职+劝退」「试用期离职+劝退」，<b>带劝退标签</b></td></tr>
+      <tr><td>数据完整度</td><td>457 条记录，入职/离职/转正日期完整</td><td>数值列（入职 / 未满3天 / 未满7天 / 试用期 / 转正 / 转正率 / 转正后离职 / 留存率）<b>目前全部为空</b>，仅「转正名单人员」有人名</td></tr>
+      <tr><td>覆盖范围</td><td>全公司三地所有部门</td><td>仅部分队组（外展新锐队、内展新锐队等 2026 年入职量最大的队组未纳入）</td></tr>
+    </table>
+    <div class="note">🔍 <b>三处需要你决定的对齐问题：</b>① <b>部门命名不统一</b>——「沐炎队」与花名册「沐焱队」用字不同，建议统一到花名册口径，否则两边永远对不上；② <b>转正名单不一致</b>——招聘表把「杨晨希」列在高峰队转正名单里，但花名册他的「转正日期」仍为空（还挂在「到岗满 1 个月关注名单」中），需确认是流程已完成未登记、还是名单填错；③「摘星队（小组取消）」等已解散组织仍在表里，建议归档，避免统计重复。<br>💡 <b>建议：统计以花名册为准</b>（本页已如此），「2026招聘数据」保留作为队组长看的目标台账；它独有的「劝退」标签，等花名册「离职类型」按 10/10 期限补录完成后即可对齐。</div>
+  </div>
+</div>
+
+<!-- ============ 绩效考核分析 ============ -->
+<div class="page" id="page-perf">
+  <div class="kpis">
+    <div class="kpi"><div class="label">搭建销售 · 8月人均绩效分</div><div class="value">108.6</div><div class="delta down">▼ 环比 -38%（7月 176.3）· 20 人</div></div>
+    <div class="kpi"><div class="label">搭建销售 · 8月营业额</div><div class="value">¥246.8<span style="font-size:13px">万</span></div><div class="delta down">▼ 环比 -47%（7月 469.8 万）</div></div>
+    <div class="kpi"><div class="label">设计师 · 8月人均绩效总分</div><div class="value">149.2</div><div class="delta up">▲ 环比 +2.5%（7月 145.5）· 8 人</div></div>
+    <div class="kpi"><div class="label">设计师 · 8月中标业绩</div><div class="value">¥353.6<span style="font-size:13px">万</span></div><div class="delta">中标 68 单 · 工作量 362 项（年内新高）</div></div>
+    <div class="kpi"><div class="label">搭建销售 · 未转正人数</div><div class="value">7</div><div class="delta">未转正不计绩效分（制度口径）· 只考核工作动作量</div></div>
+    <div class="kpi"><div class="label">外展 / 内展绩效表</div><div class="value" style="color:var(--sub)">待录入</div><div class="delta">表内各 1 条 / 5 条，暂无评分数据</div></div>
+  </div>
+
+  <div class="insight">📊 <b>本期解读（口径：智能表格「搭建销售」42 条、「设计师」44 条考核记录，按月份聚合）：</b><br>
+  ① <b>搭建销售</b>目前只有 7、8 两月数据：7 月 17 人、人均绩效分 176.3、营业额 469.8 万；8 月 20 人、人均绩效分 108.6、营业额 246.8 万——<b>绩效分与营业额双双接近腰斩</b>（-38% / -47%）。需先分清原因：是 8 月新增 3 人（含未转正新人）拉低均值，还是考核标准调整，或是真实业绩下滑，建议与业务负责人对齐目标口径。<br>
+  ② <b>设计师</b>有 4-8 月连续 5 个月数据：人均绩效总分 4 月 186.2 → 5 月 80.6 → 6 月 89.8 → 7 月 145.5 → 8 月 149.2，呈"高位回落再回升"；8 月中标 68 单 / 353.6 万，<b>工作量 362 项为年内新高</b>，人效持续提升。<br>
+  ③ <b>两处"看似异常"实为制度口径（已核实）：</b>设计师 8 月 <b>4 人同为 120 分不是填错</b>——他们当月均超额完成，绩效分按<b>上限 120 封顶</b>计，故呈现同值；搭建销售 8 月 <b>7 人无绩效分也不是漏填</b>——公司口径为<b>「转正后才有绩效工资，未转正只考核工作动作量」</b>，这 7 人（张慧珍、关若祺、丁楠、运博亚、吕腾腾、杨晨希、马安然）不计绩效分属正常，本页明细表已保留其动作量数据。<br>
+  ④ <b>外展、内展绩效表仍是空白</b>（各 1 条 / 5 条且无评分），本页已预留模块，数据录入后自动接入对比分析。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>搭建销售 · 月度绩效与业绩<span class="tag">7-8月</span></h3>
+      <div class="sub">柱=营业额（万元），线=人均绩效分</div>
+      <div id="cPerfBuildTrend" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>设计师 · 月度绩效与产出<span class="tag">4-8月</span></h3>
+      <div class="sub">柱=中标营业额（万元），线=人均绩效总分；工作量 189→362 项</div>
+      <div id="cPerfDesignTrend" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>搭建销售 · 8 月绩效明细<span class="tag">20 人</span></h3>
+    <div class="sub">按绩效分数降序 · 未转正者不计绩效分，其考核看工作动作量（电话 / 微信 / 商机）</div>
+    <table>
+      <tr><th>姓名</th><th>办公地</th><th>部门</th><th>绩效分数</th><th>营业额</th><th>电话接通量</th><th>通话时长（分）</th><th>新增微信</th><th>商机</th></tr>
+      <tr><td>王文静1</td><td>房山</td><td>高峰队</td><td><b>308.02</b></td><td>¥620,062</td><td>—</td><td>—</td><td>—</td><td>10</td></tr>
+      <tr><td>曹瑞琪</td><td>房山</td><td>沐焱队</td><td><b>281.64</b></td><td>¥580,338</td><td>—</td><td>—</td><td>18</td><td>12</td></tr>
+      <tr><td>纪帅</td><td>朝阳</td><td>朝阳搭建销售部</td><td>150.54</td><td>¥268,250</td><td>1,627</td><td>401</td><td>30</td><td>3</td></tr>
+      <tr><td>郭莉莎</td><td>房山</td><td>沐焱队</td><td>108.93</td><td>¥238,300</td><td>249</td><td>—</td><td>24</td><td>10</td></tr>
+      <tr><td>韩琪</td><td>房山</td><td>高峰队</td><td>94.67</td><td>¥145,900</td><td>480</td><td>499</td><td>54</td><td>9</td></tr>
+      <tr><td>郑荣荣</td><td>房山</td><td>沐焱队</td><td>91.27</td><td>¥183,900</td><td>—</td><td>120</td><td>46</td><td>10</td></tr>
+      <tr><td>宋焕芳</td><td>朝阳</td><td>朝阳搭建销售部</td><td>75.31</td><td>¥101,230</td><td>1,288</td><td>212</td><td>17</td><td>4</td></tr>
+      <tr><td>韩欢欢</td><td>朝阳</td><td>朝阳搭建销售部</td><td>71.99</td><td>¥76,300</td><td>1,335</td><td>530</td><td>12</td><td>4</td></tr>
+      <tr><td>杨文浩</td><td>房山</td><td>高峰队</td><td>54.56</td><td>¥88,736</td><td>—</td><td>326</td><td>33</td><td>1</td></tr>
+      <tr><td>吴云博</td><td>朝阳</td><td>朝阳搭建销售部</td><td>53.97</td><td>¥36,900</td><td>1,415</td><td>583</td><td>21</td><td>4</td></tr>
+      <tr><td>王晨霞</td><td>朝阳</td><td>朝阳搭建销售部</td><td>45.53</td><td>—</td><td>1,707</td><td>470</td><td>28</td><td>2</td></tr>
+      <tr><td>李志敏</td><td>朝阳</td><td>朝阳搭建销售部</td><td>41.15</td><td>¥2,700</td><td>1,540</td><td>356</td><td>21</td><td>2</td></tr>
+      <tr><td>李桂珍</td><td>朝阳</td><td>朝阳搭建销售部</td><td>34.85</td><td>—</td><td>1,039</td><td>276</td><td>38</td><td>10</td></tr>
+      <tr><td>张慧珍</td><td>朝阳</td><td>朝阳搭建销售部</td><td><span class="pill mid">未转正</span></td><td>¥73,800</td><td>1,148</td><td>274</td><td>32</td><td>4</td></tr>
+      <tr><td>吕腾腾</td><td>房山</td><td>沐焱队</td><td><span class="pill mid">未转正</span></td><td>¥51,840</td><td>—</td><td>—</td><td>16</td><td>—</td></tr>
+      <tr><td>关若祺</td><td>朝阳</td><td>朝阳搭建销售部</td><td><span class="pill mid">未转正</span></td><td>—</td><td>2,296</td><td>600</td><td>31</td><td>4</td></tr>
+      <tr><td>运博亚</td><td>朝阳</td><td>朝阳搭建销售部</td><td><span class="pill mid">未转正</span></td><td>—</td><td>2,043</td><td>551</td><td>12</td><td>—</td></tr>
+      <tr><td>丁楠</td><td>朝阳</td><td>朝阳搭建销售部</td><td><span class="pill mid">未转正</span></td><td>—</td><td>1,705</td><td>315</td><td>15</td><td>—</td></tr>
+      <tr><td>杨晨希</td><td>房山</td><td>高峰队</td><td><span class="pill mid">未转正</span></td><td>¥0</td><td>—</td><td>—</td><td>24</td><td>—</td></tr>
+      <tr><td>马安然</td><td>房山</td><td>高峰队</td><td><span class="pill mid">未转正</span></td><td>¥0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>设计师 · 8 月绩效明细<span class="tag">8 人</span></h3>
+    <div class="sub">按绩效总分降序 · 120 为计分上限，超额完成者统一按 120 计</div>
+    <table>
+      <tr><th>姓名</th><th>办公地</th><th>部门</th><th>绩效总分</th><th>总计工作数量</th><th>中标数量</th><th>中标营业额</th></tr>
+      <tr><td>贺双双</td><td>房山</td><td>设计部</td><td><b>198.47</b></td><td>51</td><td>12</td><td>¥843,793</td></tr>
+      <tr><td>郭微微</td><td>房山</td><td>设计部</td><td><b>194.66</b></td><td>48</td><td>14</td><td>¥796,300</td></tr>
+      <tr><td>陈子平</td><td>房山</td><td>设计部</td><td><b>194.45</b></td><td>51</td><td>9</td><td>¥461,775</td></tr>
+      <tr><td>杜帅鹏</td><td>房山</td><td>设计部</td><td>125.70</td><td>38</td><td>2</td><td>¥87,000</td></tr>
+      <tr><td>谷雷</td><td>朝阳</td><td>设计部</td><td>120.00 <span class="pill ok">达上限</span></td><td>44</td><td>8</td><td>¥600,000</td></tr>
+      <tr><td>张瑞彪</td><td>朝阳</td><td>设计部</td><td>120.00 <span class="pill ok">达上限</span></td><td>39</td><td>10</td><td>¥294,600</td></tr>
+      <tr><td>陈奇</td><td>朝阳</td><td>设计部</td><td>120.00 <span class="pill ok">达上限</span></td><td>40</td><td>12</td><td>¥431,976</td></tr>
+      <tr><td>李宁</td><td>朝阳</td><td>设计部</td><td>120.00 <span class="pill ok">达上限</span></td><td>51</td><td>1</td><td>¥21,000</td></tr>
+    </table>
+    <div class="note">✅ <b>120 不是异常值，是计分上限</b>：这 4 人当月均为超额完成，绩效分按封顶规则统一计 120，因此与工作量、中标数量的绝对值无关（李宁 51 项中标 1 单、陈奇 40 项中标 12 单，均处在超额区间）。如需区分超额程度，建议绩效表增列「超额倍数」或上调封顶值。</div>
+  </div>
+
+  <div class="card">
+    <h3>🚨 绩效预警清单</h3>
+    <div class="sub">基于绩效考核表自动扫描</div>
+    <div class="alerts">
+      <div class="alert lvl-high"><span class="ico">🔴</span><div><b>搭建销售 8 月人均绩效分环比 -38%、营业额 -47%</b>：若考核标准未变，说明业绩实际下滑，需与业务负责人对齐目标；若标准变了，建议在表里留一列"考核标准版本"，否则跨月不可比。</div></div>
+      <div class="alert lvl-low"><span class="ico">🔵</span><div><b>设计师绩效分 120 为封顶值</b>：谷雷、张瑞彪、陈奇、李宁当月均超额完成，按上限 120 计，属正常口径。若需体现超额差异，建议增加「超额倍数」字段或上调封顶值。</div></div>
+      <div class="alert lvl-low"><span class="ico">🔵</span><div><b>搭建销售 7 人无绩效分＝尚未转正</b>：公司口径为「转正后才有绩效工资，未转正只考核工作动作量」，因此张慧珍、关若祺、丁楠、运博亚、吕腾腾、杨晨希、马安然 7 人不计绩效分属正常。建议考核表增列「是否转正」一列，让口径在表内可视。</div></div>
+      <div class="alert lvl-low"><span class="ico">🔵</span><div><b>建议补一个「绩效等级」字段</b>：现有表只有分数，没有 S/A/B/C 等级，加上后即可做等级分布、连续低绩效预警与强制分布校准。</div></div>
+      <div class="alert lvl-low"><span class="ico">🔵</span><div><b>外展、内展绩效表暂无数据</b>（各 1 条 / 5 条）：模块已预留，录入评分后本页会自动接入三模块对比。</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ 数据质量 ============ -->
+<div class="page" id="page-quality">
+  <div class="kpis">
+    <div class="kpi"><div class="label">扫描数据表</div><div class="value">3</div><div class="delta">花名册总表 / 招聘计划月度表 / 面试登记表</div></div>
+    <div class="kpi"><div class="label">扫描记录总数</div><div class="value">1,257</div><div class="delta">457 + 8 + 792</div></div>
+    <div class="kpi"><div class="label">发现异常项</div><div class="value" style="color:var(--red)">8</div><div class="delta">3 项严重 · 4 项一般 · 1 项提示</div></div>
+    <div class="kpi"><div class="label">严重（影响统计口径）</div><div class="value" style="color:var(--red)">3</div><div class="delta">缺失 / 过期类问题</div></div>
+    <div class="kpi"><div class="label">要求完成时限</div><div class="value" style="color:#d9660b">10/10</div><div class="delta">9/28 已通知相关同事</div></div>
+    <div class="kpi"><div class="label">扫描时间</div><div class="value">10-08</div><div class="delta">每日随数据同步自动重扫</div></div>
+  </div>
+
+  <div class="insight">📊 <b>本期解读：</b>本次扫描覆盖花名册总表、招聘计划月度表、面试登记表共 1,257 条记录，发现 8 项数据质量问题（上期 9 项）。<b>✅ 合同字段本周已大幅补齐</b>：「劳动合同到期日期」缺失由 59 人降至 31 人、「劳动合同类型」缺失由 99 人降至 28 人，两项均已从「严重」降为「一般」。<b>仍需关注的四项</b>：①花名册「离职类型」——<b>162 名离职员工未填写（47%）</b>；同一行的「离职原因（文本输入具体原因）」<b>344 名离职员工全部为空（100%）</b>，尚无任何填写记录，主动/被动离职结构与离职原因分析仍不完整；②「劳动合同到期日期」全表 365 行缺失（在职 31 人），到期提醒仍覆盖不全；③「劳动合同类型」在职 113 人中 28 人空白（25%），合同管理精细化受影响；④「人员类别」缺失 220 行（48%），社保参保结构统计不完整。<br>另外招聘计划月度表的「实际入职人数」全空 + 3 行空行，使达成率公式失效。<br>⏰ <b>时限提醒：</b>上述问题的补录工作已于 <b>9/28 通知相关同事</b>，要求 <span class="dlt">10 月 10 日</span> 前完成。补齐后本工作台所有分析都会同步变准。</div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>问题分布<span class="tag">按类型</span></h3>
+      <div class="sub">缺失类 / 过期类 / 逻辑与进度类</div>
+      <div id="cQualityType" class="chart"></div>
+    </div>
+    <div class="card">
+      <h3>严重问题涉及记录量</h3>
+      <div class="sub">按问题项统计受影响记录数</div>
+      <div id="cQualityCount" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>⚠️ 问题清单<span class="tag red">共 8 项</span><span class="tag">完成期限 10/10</span></h3>
+    <div class="sub">按严重程度排序；「完成期限」为 9/28 通知的补录要求节点</div>
+    <table>
+      <tr><th>#</th><th>来源表</th><th>问题</th><th>影响范围</th><th>后果</th><th>级别</th><th>完成期限</th></tr>
+      <tr><td>1</td><td>花名册总表</td><td>「离职类型」未填写；「离职原因」全部为空</td><td>离职类型 162 人（47%）；离职原因 344 人（100%）</td><td>无法区分主动/被动离职，离职原因分析缺失</td><td><span class="pill high">严重</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>2</td><td>花名册总表</td><td>「劳动合同到期日期」缺失</td><td>全表 365 行；在职 31 人</td><td>到期预警仍覆盖不全（本周已由 59 人补至 31 人）</td><td><span class="pill mid">一般</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>3</td><td>花名册总表</td><td>「劳动合同类型」缺失</td><td>在职 113 人中 28 人（25%）</td><td>无法区分长期/固定期限/劳务，合同管理精细化受影响</td><td><span class="pill mid">一般</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>4</td><td>花名册总表</td><td>8 名在职员工合同已过期仍未续签</td><td>8 人</td><td>存在用工合规与劳动争议风险</td><td><span class="pill high">严重</span></td><td><span class="pill high">立即</span></td></tr>
+      <tr><td>5</td><td>招聘计划月度表</td><td>「实际入职人数」全部未填写</td><td>8 行</td><td>达成率公式失效（显示 0 / 计算错误）</td><td><span class="pill high">严重</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>6</td><td>花名册总表</td><td>「人员类别」缺失</td><td>220 行（48%）</td><td>社保参保类别统计不完整</td><td><span class="pill mid">一般</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>7</td><td>招聘计划月度表</td><td>3 行整行空白记录</td><td>3 行</td><td>污染统计口径，触发计算错误</td><td><span class="pill mid">一般</span></td><td><span class="pill due">10/10</span></td></tr>
+      <tr><td>8</td><td>花名册总表</td><td>「部门」有 1 行为空</td><td>1 行</td><td>部门维度统计少 1 人</td><td><span class="pill low">提示</span></td><td><span class="pill due">10/10</span></td></tr>
+    </table>
+    <div class="note">✅ <b>字段说明：</b>「离职类型」「离职原因」按规则仅离职人员需填（在职 113 人留空属正常）。当前 <b>「离职类型」162 名离职员工未填写（47%）</b>，已从上期 100% 明显改善；但 <b>「离职原因」344 名离职员工全部为空、尚无填写记录</b>，是需要在 10/10 补录中一并推进的字段。「离职阶段（公式）」为公式字段，已 100% 自动覆盖，可正常使用。</div>
+  </div>
+
+  <div class="card">
+    <h3>合同已过期人员明细<span class="tag red">需立即处理</span></h3>
+    <div class="sub">在职状态但劳动合同到期日早于 2026-10-08</div>
+    <table>
+      <tr><th>姓名</th><th>办公地</th><th>业务板块</th><th>部门</th><th>合同到期日</th><th>已过期</th><th>状态</th></tr>
+      <tr><td>张萌1</td><td>朝阳</td><td>职能配合</td><td>人事行政部</td><td>2026-04-02</td><td>约 6.2 个月</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>李媛博</td><td>朝阳</td><td>搭建</td><td>项目部</td><td>2026-09-12</td><td>约 0.9 个月</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>吴云博</td><td>朝阳</td><td>搭建</td><td>朝阳搭建销售部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>纪帅</td><td>朝阳</td><td>搭建</td><td>朝阳搭建销售部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>谷雷</td><td>朝阳</td><td>搭建</td><td>设计部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>张瑞彪</td><td>朝阳</td><td>搭建</td><td>设计部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>李宁</td><td>朝阳</td><td>搭建</td><td>设计部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+      <tr><td>杜欣凌</td><td>朝阳</td><td>外展</td><td>外联部</td><td>2026-09-30</td><td>8 天</td><td><span class="pill high">立即续签</span></td></tr>
+    </table>
+    <div class="note">📌 提示：另有 2 人合同 10 月内到期、2 人 11 月、2 人 12 月到期，建议一并排期处理，避免新一批过期产生。</div>
+  </div>
+</div>
+
+<div class="page" id="page-perm">
+  <div id="permSlot"><div class="card"><h3>权限设置</h3><div class="sub">正在载入…</div></div></div>
+</div>
+</div>
+
+<script>
+/* ---------- 选项卡切换 ---------- */
+const inited={};
+document.getElementById('tabs').addEventListener('click',e=>{
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  const p=document.getElementById('page-'+t.dataset.page);
+  p.classList.add('active');
+  if(!inited[t.dataset.page]){inited[t.dataset.page]=true;renderPage(t.dataset.page);}
+  p.querySelectorAll('.chart').forEach(el=>{const c=echarts.getInstanceByDom(el);c&&c.resize();});
+  window.scrollTo({top:0});
+});
+
+const C={primary:'#2f6bff',teal:'#22b07d',orange:'#ff9f43',red:'#f0443c',purple:'#8b5cf6',gray:'#95a5b8',lightgray:'#c3cdda',gold:'#f5c26b'};
+function mk(id,opt){const el=document.getElementById(id);if(!el||!window.echarts)return;
+  const c=echarts.init(el);c.setOption(Object.assign({tooltip:{trigger:'axis'},grid:{left:52,right:22,top:38,bottom:28},textStyle:{color:'#1f2d3d'}},opt));}
+
+function renderPage(page){
+if(page==='overview'){
+  mk('cRegionPanel',{legend:{data:['外展','内展','搭建','职能配合'],top:4},
+    xAxis:{type:'category',data:['房山','保定','朝阳']},yAxis:{type:'value'},
+    series:[
+      {name:'外展',type:'bar',stack:'t',data:[41,11,2],itemStyle:{color:C.primary},label:{show:true,position:'inside'}},
+      {name:'内展',type:'bar',stack:'t',data:[0,11,0],itemStyle:{color:C.teal},label:{show:true,position:'inside'}},
+      {name:'搭建',type:'bar',stack:'t',data:[17,0,17],itemStyle:{color:C.orange},label:{show:true,position:'inside'}},
+      {name:'职能配合',type:'bar',stack:'t',data:[11,2,1],itemStyle:{color:C.purple}}]});
+
+  mk('cTurnover',{legend:{data:['入职','离职','净增'],top:4},
+    xAxis:{type:'category',data:['1月','2月','3月','4月','5月','6月','7月','8月','9月']},
+    yAxis:{type:'value'},
+    series:[
+      {name:'入职',type:'bar',data:[7,0,27,16,11,7,15,17,9],itemStyle:{color:C.teal,borderRadius:[4,4,0,0]}},
+      {name:'离职',type:'bar',data:[10,5,11,14,10,12,11,15,11],itemStyle:{color:C.red,borderRadius:[4,4,0,0]}},
+      {name:'净增',type:'line',smooth:true,data:[-3,-5,16,2,1,-5,4,2,-2],lineStyle:{color:C.primary},itemStyle:{color:C.primary}}]});
+
+  mk('cStructure',{tooltip:{trigger:'item'},legend:{top:4},
+    series:[
+      {name:'性别',type:'pie',radius:['38%','58%'],center:['26%','56%'],
+       data:[{value:98,name:'女',itemStyle:{color:C.red}},{value:15,name:'男',itemStyle:{color:C.primary}}],
+       label:{formatter:'{b}\n{c}人',fontSize:11}},
+      {name:'状态',type:'pie',radius:['38%','58%'],center:['76%','56%'],
+       data:[{value:92,name:'已转正',itemStyle:{color:C.teal}},{value:21,name:'试用期',itemStyle:{color:C.orange}}],
+       label:{formatter:'{b}\n{c}人',fontSize:11}}]});
+}
+
+if(page==='recruit'){
+  mk('cPlanActual',{legend:{data:['9月计划入职','9月实际入职'],top:4},
+    xAxis:{type:'category',data:['房山','保定','朝阳','合计']},yAxis:{type:'value'},
+    series:[
+      {name:'9月计划入职',type:'bar',data:[7,3,1,11],itemStyle:{color:C.lightgray,borderRadius:[4,4,0,0]},label:{show:true,position:'top'}},
+      {name:'9月实际入职',type:'bar',data:[4,4,1,9],itemStyle:{color:C.primary,borderRadius:[4,4,0,0]},label:{show:true,position:'top'}}]});
+
+  mk('cInterviewResult',{tooltip:{trigger:'item'},
+    series:[{type:'pie',radius:['45%','70%'],center:['50%','54%'],
+      data:[{value:506,name:'不考虑',itemStyle:{color:C.red}},{value:166,name:'可入职',itemStyle:{color:C.teal}},{value:71,name:'拒绝offer',itemStyle:{color:C.orange}},{value:49,name:'待定',itemStyle:{color:C.gold}}],
+      label:{formatter:'{b}\n{c} 人次 ({d}%)',fontSize:11}}]});
+
+  mk('cInterviewRegion',{xAxis:{type:'category',data:['房山','保定','朝阳']},yAxis:{type:'value',name:'人次'},
+    series:[{type:'bar',barWidth:56,label:{show:true,position:'top'},
+      data:[{value:336,itemStyle:{color:C.primary}},{value:228,itemStyle:{color:C.teal}},{value:228,itemStyle:{color:C.orange}}],
+      itemStyle:{borderRadius:[6,6,0,0]}}]});
+
+  mk('cTeamProgress',{legend:{data:['需求人数','实际入职','未转正','已转正'],top:4},
+    xAxis:{type:'category',data:['金泽队','黑马队','王者队','狂飙队','精英队','雷霆队','北斗队','荣耀队']},
+    yAxis:{type:'value'},
+    series:[
+      {name:'需求人数',type:'bar',data:[1,2,2,2,1,1,2,1],itemStyle:{color:C.lightgray}},
+      {name:'实际入职',type:'bar',data:[1,4,1,1,1,1,2,2],itemStyle:{color:C.primary}},
+      {name:'未转正',type:'bar',data:[1,2,0,1,0,1,0,0],itemStyle:{color:C.orange}},
+      {name:'已转正',type:'bar',data:[2,2,3,0,3,2,2,3],itemStyle:{color:C.teal}}]});
+
+  mk('cTeamRetention',{tooltip:{trigger:'axis'},legend:{data:['2026入职','目前在职','留存率%'],top:4},
+    xAxis:{type:'category',data:['外展新锐','朝阳搭建','黑马队','飞龙队','高峰队','内展新锐','天一队','外联部','客服部','金泽队','精英队'],axisLabel:{fontSize:10,interval:0,rotate:24}},
+    yAxis:[{type:'value',name:'人数'},{type:'value',max:100,axisLabel:{formatter:'{value}%'}}],
+    series:[
+      {name:'2026入职',type:'bar',barWidth:26,itemStyle:{color:C.primary,borderRadius:[4,4,0,0]},data:[20,16,8,6,6,6,5,4,4,4,4]},
+      {name:'目前在职',type:'bar',barWidth:26,itemStyle:{color:C.teal,borderRadius:[4,4,0,0]},data:[7,6,2,2,3,0,3,4,1,2,1]},
+      {name:'留存率%',type:'line',yAxisIndex:1,smooth:true,itemStyle:{color:C.orange},lineStyle:{color:C.orange},label:{show:true,formatter:'{c}%',fontSize:10},data:[35,38,25,33,50,0,60,100,25,50,25]}]});
+}
+
+if(page==='perf'){
+  mk('cPerfBuildTrend',{tooltip:{trigger:'axis'},legend:{data:['营业额（万元）','人均绩效分'],top:4},
+    xAxis:{type:'category',data:['7月','8月']},
+    yAxis:[{type:'value',name:'万元'},{type:'value',name:'绩效分'}],
+    series:[
+      {name:'营业额（万元）',type:'bar',barWidth:56,itemStyle:{color:C.primary,borderRadius:[4,4,0,0]},label:{show:true,position:'top',formatter:'{c} 万'},data:[469.8,246.8]},
+      {name:'人均绩效分',type:'line',yAxisIndex:1,smooth:true,itemStyle:{color:C.orange},lineStyle:{color:C.orange},label:{show:true,formatter:'{c}',fontSize:10},data:[176.3,108.6]}]});
+
+  mk('cPerfDesignTrend',{tooltip:{trigger:'axis'},legend:{data:['中标营业额（万元）','人均绩效总分'],top:4},
+    xAxis:{type:'category',data:['4月','5月','6月','7月','8月']},
+    yAxis:[{type:'value',name:'万元'},{type:'value',name:'绩效分'}],
+    series:[
+      {name:'中标营业额（万元）',type:'bar',barWidth:40,itemStyle:{color:C.primary,borderRadius:[4,4,0,0]},label:{show:true,position:'top',formatter:'{c}',fontSize:10},data:[383.8,214.3,217.2,503.7,353.6]},
+      {name:'人均绩效总分',type:'line',yAxisIndex:1,smooth:true,itemStyle:{color:C.orange},lineStyle:{color:C.orange},label:{show:true,formatter:'{c}',fontSize:10},data:[186.2,80.6,89.8,145.5,149.2]}]});
+}
+
+if(page==='salary'){
+  if(typeof window.__salaryRender==='function'){window.__salaryRender();}
+}
+
+if(page==='quality'){
+  mk('cQualityType',{tooltip:{trigger:'item'},
+    series:[{type:'pie',radius:['45%','70%'],center:['50%','54%'],
+      data:[{value:4,name:'信息缺失类',itemStyle:{color:C.red}},{value:1,name:'期限过期类',itemStyle:{color:C.orange}},{value:3,name:'逻辑与进度类',itemStyle:{color:C.primary}}],
+      label:{formatter:'{b}\n{c} 项',fontSize:11}}]});
+
+  mk('cQualityCount',{xAxis:{type:'category',data:['离职字段待补','合同到期日缺失','人员类别缺失','合同类型缺失'],axisLabel:{fontSize:10,interval:0,rotate:18}},
+    yAxis:{type:'value',name:'记录数'},
+    series:[{type:'bar',barWidth:40,label:{show:true,position:'top'},
+      data:[{value:162,itemStyle:{color:C.red}},{value:365,itemStyle:{color:C.red}},{value:220,itemStyle:{color:C.orange}},{value:28,itemStyle:{color:C.primary}}],
+      itemStyle:{borderRadius:[6,6,0,0]}}]});
+}
+}
+renderPage('overview');inited['overview']=true;
+</script>
+<script>
+/* ---------- 权限守卫：受限内容不随页面下发，按角色动态载入 ---------- */
+(function(){
+  var me=null;
+  var PBTN='display:inline-block;padding:3px 10px;border-radius:6px;border:1px solid #cfd9e6;background:#fff;color:#55657a;font-size:12px;font-weight:600;cursor:pointer;margin-right:6px;';
+
+  function el(id){return document.getElementById(id);}
+  function isAdmin(){return !!(me&&me.role==='admin');}
+  function allowed(k){return isAdmin()||!!(me&&me.modules&&me.modules[k]==='allow');}
+  function lockBox(title,desc,tag){
+    return '<div class="card"><h3>'+title+'<span class="tag red">🔒 受限模块</span></h3>'
+      +'<div style="background:#f7f9fc;border:1px dashed #cfd9e6;border-radius:10px;padding:18px 20px;margin-top:6px;">'
+      +'<div style="font-size:14px;font-weight:600;color:#55657a;margin-bottom:8px;">🔒 当前账号无查看权限</div>'
+      +'<div style="font-size:12.5px;color:var(--sub);line-height:1.9;">'+desc+'</div></div></div>';
+  }
+
+  fetch('/__hrwhoami',{credentials:'same-origin'})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(m){me=m||{};boot();})
+    .catch(function(){me={};boot();});
+
+  function boot(){
+    applyRoleUI();
+    if(isAdmin()){
+      renderPermPage();
+    }else{
+      var p=el('permSlot');
+      if(p)p.innerHTML=lockBox('权限设置','本页仅管理权限可访问。');
+    }
+  }
+
+  function applyRoleUI(){
+    var admin=isAdmin();
+    var b=el('roleBadge');
+    if(b){
+      b.innerHTML='<span style="display:inline-block;padding:1px 9px;border-radius:6px;font-size:11.5px;font-weight:600;'
+        +(admin?'background:#eafaf3;color:#1b8a5e;border:1px solid #bfe9d5':'background:#fff4e6;color:#b3700d;border:1px solid #ffdca8')
+        +'">'+(admin?'当前权限：管理（全量）':'当前权限：员工（按管理员配置）')+'</span>';
+    }
+    /* 各 tab 的显示完全由服务器下发配置决定（管理员始终全显示） */
+    var tabs=document.querySelectorAll('.tab[data-page]');
+    var firstVisible=null;
+    for(var i=0;i<tabs.length;i++){
+      var k=tabs[i].getAttribute('data-page');
+      var vis=allowed(k);
+      tabs[i].style.display=vis?'':'none';
+      if(vis&&!firstVisible)firstVisible=tabs[i];
+    }
+    var act=document.querySelector('.tab.active');
+    if(act&&act.style.display==='none'&&firstVisible){
+      firstVisible.click();
+    }else if(!firstVisible){
+      var c=document.querySelector('.content');
+      if(c)c.innerHTML='<div class="card"><h3>暂无可见模块</h3><div class="sub">管理员尚未对当前账号开放任何模块，请联系 HR 数据管理员。</div></div>';
+    }
+  }
+
+  /* ---------- 权限设置页：勾选即改，保存即时生效 ---------- */
+  function renderPermPage(){
+    var slot=el('permSlot');
+    if(!slot)return;
+    fetch('/__hrsecure/perm-info',{credentials:'same-origin'})
+      .then(function(r){if(!r.ok)throw new Error('denied');return r.json();})
+      .then(function(d){
+        window.__permAccounts=d.accounts||[];
+        window.__permEndpoint=d.endpoint||'/api/acl';
+        var accRows=window.__permAccounts.map(function(a,i){
+          return '<tr><td><b>'+a.name+'</b></td><td>'+a.roleLabel+'</td>'
+            +'<td><code id="pwdv'+i+'" data-shown="0" style="font-family:ui-monospace,Menlo,monospace;font-size:13.5px;letter-spacing:1px;">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022</code></td>'
+            +'<td><button type="button" style="'+PBTN+'" onclick="__togglePwd('+i+')">显示</button>'
+            +'<button type="button" style="'+PBTN+'" onclick="__copyPwd('+i+')">复制</button></td></tr>';
+        }).join('');
+        var modRows=(d.modules||[]).map(function(m){
+          if(m.fixed){
+            return '<tr><td><b>'+m.name+'</b> <span class="tag">固定</span></td>'
+              +'<td style="color:var(--sub)">🔒 员工不可见</td><td style="color:var(--sub)">'+m.note+'</td></tr>';
+          }
+          return '<tr><td><label style="cursor:pointer;display:flex;align-items:center;gap:9px;font-weight:600;">'
+            +'<input type="checkbox" data-mod="'+m.key+'"'+(m.staff?' checked':'')
+            +' style="width:16px;height:16px;cursor:pointer;flex:0 0 auto;">'+m.name+'</label></td>'
+            +'<td style="color:var(--sub)">'+m.note+'</td></tr>';
+        }).join('');
+        var upd=d.updated?('最后修改：'+new Date(d.updated).toLocaleString('zh-CN')):'尚未修改过（当前为默认配置）';
+        slot.innerHTML=
+          '<div class="card"><h3>各模块对员工是否可见<span class="tag">勾选后点保存即生效</span></h3>'
+          +'<div class="sub">勾上＝员工密码能看到该模块；取消＝员工看不到，<b>数据根本不会下发到员工浏览器</b>。<b>管理员始终能看到全部模块，不受此处影响。</b></div>'
+          +'<table><tr><th style="width:40%">模块（勾选＝员工可见）</th><th>说明</th></tr>'+modRows+'</table>'
+          +'<div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+          +'<button type="button" id="aclSave" style="border:0;border-radius:9px;background:#2f6bff;color:#fff;font-size:14px;font-weight:600;padding:10px 26px;cursor:pointer;" onclick="__saveAcl()">保存并立即生效</button>'
+          +'<button type="button" style="'+PBTN+'padding:9px 16px;font-size:13px;" onclick="__reloadPerm()">放弃修改</button>'
+          +'<span id="aclMsg" style="font-size:12.5px;color:var(--sub);">'+upd+'</span></div>'
+          +'<div class="note">📌 保存后<b>不需要重新部署</b>，配置写入云端存储即时保存；全节点同步通常几秒、最长约 1 分钟，保存按钮下方会显示「已生效」确认。<br>📌 员工刷新页面即可看到新的可见范围；若关闭了他正在看的模块，刷新后会变成锁定提示。</div></div>'
+
+          +'<div class="card"><h3>两个密码<span class="tag">防泄露 · 仅管理可见</span></h3>'
+          +'<div class="sub">本页数据由服务器按角色下发，员工密码打不开这一页，密码也不会出现在员工浏览器里。</div>'
+          +'<table><tr><th>密码</th><th>权限范围</th><th>当前值</th><th>操作</th></tr>'+accRows+'</table>'
+          +'<div class="note">📌 <b>员工密码</b>发部门同事，可见范围就是上面勾选的模块。<br>📌 <b>管理密码</b>只给你和授权的同事，可看全部 + 本页。</div></div>'
+
+          +'<div class="card"><h3>生成新密码<span class="tag">换密码用</span></h3>'
+          +'<div class="sub">点一下生成一个随机密码，复制后发我一句「员工密码换成 xxx」，我更新后立即生效（1 分钟内）。</div>'
+          +'<button type="button" style="'+PBTN+'padding:8px 18px;font-size:13.5px;background:#2f6bff;color:#fff;border-color:#2f6bff;" onclick="__genPwd()">生成新密码</button>'
+          +'<div id="genOut" style="margin-top:14px"></div></div>';
+      })
+      .catch(function(){
+        slot.innerHTML='<div class="card"><h3>权限设置</h3><div class="sub">数据加载失败，请刷新重试。</div></div>';
+      });
+  }
+
+  window.__reloadPerm=function(){renderPermPage();};
+
+  /* 保存后轮询确认：Blob 为最终一致，跨节点同步通常几秒、最长约 1 分钟 */
+  window.__waitAcl=function(target,tries){
+    var msg=el('aclMsg');
+    if(!target||tries>25){
+      if(msg)msg.innerHTML='<b style="color:#1b8a5e">✅ 已保存</b> · 配置正在同步，通常 1 分钟内全部节点生效。';
+      return;
+    }
+    fetch('/api/acl?cb='+Date.now(),{credentials:'same-origin'})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){
+        if(j&&j.config&&j.config.updated===target){
+          if(msg)msg.innerHTML='<b style="color:#1b8a5e">✅ 已生效</b> · '+new Date(target).toLocaleString('zh-CN')+'（已确认服务器读到新配置）';
+          return;
+        }
+        setTimeout(function(){window.__waitAcl(target,tries+1);},1000);
+      })
+      .catch(function(){setTimeout(function(){window.__waitAcl(target,tries+1);},1000);});
+  };
+
+  window.__saveAcl=function(){
+    var msg=el('aclMsg');
+    var boxes=document.querySelectorAll('#permSlot input[data-mod]');
+    var staff={};
+    for(var i=0;i<boxes.length;i++){staff[boxes[i].getAttribute('data-mod')]=boxes[i].checked;}
+    var btn=el('aclSave');
+    if(btn){btn.disabled=true;btn.textContent='保存中…';}
+    if(msg){msg.textContent='正在保存…';}
+    fetch(window.__permEndpoint||'/api/acl',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({staff:staff})})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {ok:r.ok,j:j};});})
+      .then(function(res){
+        if(btn){btn.disabled=false;btn.textContent='保存并立即生效';}
+        if(!res.ok||!res.j||!res.j.ok){
+          var e=(res.j&&res.j.error)||'HTTP 错误';
+          if(msg){msg.innerHTML='<b style="color:var(--red)">保存失败（'+e+'），请重试。</b>';}
+          return;
+        }
+        var t=res.j.config&&res.j.config.updated;
+        if(msg){msg.innerHTML='<b style="color:#1b8a5e">✅ 已保存</b>'+(t?' · '+new Date(t).toLocaleString('zh-CN'):'')+' · 正在生效…';}
+        window.__waitAcl(t,0);
+        fetch('/__hrwhoami',{credentials:'same-origin'}).then(function(r){return r.ok?r.json():null;})
+          .then(function(m){if(m){me=m;applyRoleUI();}});
+      })
+      .catch(function(){
+        if(btn){btn.disabled=false;btn.textContent='保存并立即生效';}
+        if(msg){msg.innerHTML='<b style="color:var(--red)">保存失败（网络错误），请重试。</b>';}
+      });
+  };
+
+  window.__togglePwd=function(i){
+    var node=el('pwdv'+i);
+    var a=(window.__permAccounts||[])[i];
+    if(!node||!a)return;
+    if(node.getAttribute('data-shown')==='1'){
+      node.textContent='\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+      node.setAttribute('data-shown','0');
+    }else{
+      node.textContent=a.pwd;
+      node.setAttribute('data-shown','1');
+    }
+  };
+  window.__copyPwd=function(i){
+    var a=(window.__permAccounts||[])[i];
+    if(a)window.__copyText(a.pwd);
+  };
+  window.__copyText=function(t){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){alert('已复制：'+t);},function(){alert('复制失败，请手动选择复制：'+t);});
+    }else{
+      alert('请手动复制：'+t);
+    }
+  };
+  window.__genPwd=function(){
+    var c='abcdefghijkmnpqrstuvwxyz23456789',r='';
+    for(var i=0;i<6;i++)r+=c.charAt(Math.floor(Math.random()*c.length));
+    var p='wdbs-'+r;
+    var out=el('genOut');
+    if(!out)return;
+    out.innerHTML='<div style="font-size:12.5px;color:var(--sub);margin-bottom:8px;">新密码（点「复制」拿走）：</div>'
+      +'<code style="font-family:ui-monospace,Menlo,monospace;font-size:18px;font-weight:700;color:#2f6bff;background:#f0f5ff;border:1px solid #d6e4ff;border-radius:8px;padding:7px 16px;display:inline-block;">'+p+'</code>'
+      +' <button type="button" style="'+PBTN+'" onclick="__copyText(\''+p+'\')">复制</button>'
+      +'<div style="font-size:12.5px;color:var(--sub);margin-top:12px;line-height:1.9;">把这句话发我即可生效：<b>「员工密码换成 '+p+'」</b></div>';
+  };
+})();
+</script>
+</body>
+</html>
